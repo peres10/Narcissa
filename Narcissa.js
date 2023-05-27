@@ -26,6 +26,8 @@ const IMAGE_NAME_INVALID = "invalid";
 const IMAGE_NAME_SHRUB = "shrub";
 const IMAGE_NAME_BERRY_BLUE = "berryBlue";
 const IMAGE_NAME_SNAKE_HEAD = "snakeHead";
+const IMAGE_NAME_SNAKE_BODY = "snakeBody";
+
 
 
 // GLOBAL VARIABLES
@@ -58,7 +60,8 @@ class Actor {
 	move(dx, dy) {
 		this.hide();
 		this.x += dx;
-		this.y += dy;
+        this.y += dy;
+
 		this.show();
 	}
 	animation(x, y) {
@@ -95,28 +98,85 @@ class Berry extends Actor {
 	}
 }
 
+
 class Snake extends Actor {
 	constructor(x, y) {
 		super(x, y, IMAGE_NAME_SNAKE_HEAD);
-		[this.movex, this.movey] = [1,0];
+		[this.movex, this.movey] = [0,0];
+        this.berryCount = 0;
+        this.berryCounterElement = document.getElementById("berryCounter");
 	}
+
+    addBodyPart(x,y){
+        const bodyPart = new Actor(x,y, IMAGE_NAME_SNAKE_BODY);
+        this.body.push(bodyPart);
+    }
 	handleKey() {
 		let k = control.getKey();
+        
+        //console.log(k)
 		if (k === null)	// ignore
 			;
 		else if (typeof(k) === "string")	// special command
 			// special command
-			mesg("special command == " + k)
+			//mesg("special command == " + k)
+            ;
 		else {	// change direction
 			let kx, ky;
 			[kx, ky] = k;
-			mesg("change direction == " + k)
+			//mesg("change direction == " + k)
+            this.movex = kx;
+            this.movey = ky;
 		}
+	}
+    move(dx, dy) {
+		let nextX = this.x + dx;
+        let nextY = this.y + dy;
+
+
+		if (nextX < 0) {
+			nextX = WORLD_WIDTH - 1; // Wrap to the right side
+		} else if (nextX >= WORLD_WIDTH) {
+			nextX = 0; // Wrap to the left side
+		}
+
+		if (nextY< 0) {
+			nextY = WORLD_HEIGHT - 1; // Wrap to the bottom
+		} else if (nextY >= WORLD_HEIGHT) {
+			nextY = 0; // Wrap to the top
+		}
+
+        const actorAtNewPosition = control.world[nextX][nextY];
+
+        if (actorAtNewPosition instanceof Berry){
+            this.berryCount++;
+            actorAtNewPosition.hide()
+            this.updateBerryCounter()
+
+        }
+
+        if(actorAtNewPosition instanceof Shrub){
+            this.gameOver()
+            return;
+        }
+
+        this.hide()
+        this.x = nextX;
+        this.y = nextY;
+		this.show();
 	}
 	animation(x, y) {
 		this.handleKey();
 		this.move(this.movex, this.movey);
 	}
+    updateBerryCounter(){
+        this.berryCounterElement.textContent = this.berryCount;
+    }
+    gameOver(){
+        this.berryCount = 0;
+        this.updateBerryCounter()
+        control.gameOver();
+    }
 }
 
 
@@ -134,6 +194,8 @@ class GameControl {
 		this.world = this.createWorld();
 		this.loadLevel(1);
 		this.setupEvents();
+        this.isPaused = true;
+        this.timeDisplay = document.getElementById("timeDisplay");
 	}
 	getEmpty() {
 		return this.empty;
@@ -177,7 +239,11 @@ class GameControl {
 		setInterval(() => this.animationEvent(), 1000 / ANIMATION_EVENTS_PER_SECOND);
 	}
 	animationEvent() {
+        if( this.isPaused ){
+            return;
+        }
 		this.time++;
+        this.timeDisplay.textContent = "Time: " + this.time;
 		for(let x=0 ; x < WORLD_WIDTH ; x++)
 			for(let y=0 ; y < WORLD_HEIGHT ; y++) {
 				let a = this.world[x][y];
@@ -188,10 +254,22 @@ class GameControl {
 			}
 	}
 	keyDownEvent(e) {
+        this.isPaused = false
 		this.key = e.keyCode;
 	}
 	keyUpEvent(e) {
 	}
+    pauseGame(){
+        this.isPaused = !this.isPaused;
+        const pauseButton = document.getElementById("pauseButton");
+
+        pauseButton.value = this.isPaused ? "Resume" : "Pause";
+    }
+    gameOver(){
+        alert("Game over!")
+		this.loadLevel(1);
+        this.time = 0
+    }
 }
 
 
