@@ -98,13 +98,28 @@ class Berry extends Actor {
 	}
 }
 
+class SnakeBody extends Actor {
+	constructor(x,y){
+		super(x,y, IMAGE_NAME_SNAKE_BODY);
+	}
+
+}
 
 class Snake extends Actor {
 	constructor(x, y) {
 		super(x, y, IMAGE_NAME_SNAKE_HEAD);
+		this.startX = x;
+		this.startY = y;
 		[this.movex, this.movey] = [0,0];
         this.berryCount = 0;
         this.berryCounterElement = document.getElementById("berryCounter");
+		
+		this.snakeParts = []
+		this.snakeParts.push(new SnakeBody(x-1,y))
+		this.snakeParts.push(new SnakeBody(x-2,y))
+		this.snakeParts.push(new SnakeBody(x-3,y))
+		this.lastBodyPart = new SnakeBody(x-4,y)
+		this.snakeParts.push(this.lastBodyPart)
 	}
 
     addBodyPart(x,y){
@@ -125,8 +140,12 @@ class Snake extends Actor {
 			let kx, ky;
 			[kx, ky] = k;
 			//mesg("change direction == " + k)
-            this.movex = kx;
-            this.movey = ky;
+			if (kx === -this.movex && ky=== -this.movey){
+
+			} else {
+            	this.movex = kx;
+            	this.movey = ky;
+			}
 		}
 	}
     move(dx, dy) {
@@ -152,15 +171,45 @@ class Snake extends Actor {
             this.berryCount++;
             actorAtNewPosition.hide()
             this.updateBerryCounter()
-
+			
+			let newBodyPart = new SnakeBody(this.lastBodyPart.x-1,this.lastBodyPart.y-1)
+			this.lastBodyPart = newBodyPart;
+			this.snakeParts.push(newBodyPart)
         }
 
-        if(actorAtNewPosition instanceof Shrub){
+        if(actorAtNewPosition instanceof Shrub || actorAtNewPosition instanceof SnakeBody){
             this.gameOver()
             return;
         }
 
+		/*for (let i = 0; i < this.snakeParts.length; i++) {
+			if (nextX === this.snakeParts[i].x && nextY === this.snakeParts[i].y) {
+				this.gameOver();
+				return;
+			}
+		}*/
+
         this.hide()
+
+		let prevX = this.x;
+		let prevY = this.y;
+		if(!(this.movex == 0 && this.movey == 0))
+			for(let i = 0; i < this.snakeParts.length; i++){
+				
+				let auxX = this.snakeParts[i].x;
+				let auxY = this.snakeParts[i].y;
+				this.snakeParts[i].hide()
+				
+				this.snakeParts[i].x = prevX
+				this.snakeParts[i].y = prevY
+				//this.snakeParts[i].move(prevX,prevY)
+
+				
+				this.snakeParts[i].show()
+				prevX = auxX;
+				prevY = auxY;
+			}
+
         this.x = nextX;
         this.y = nextY;
 		this.show();
@@ -175,6 +224,15 @@ class Snake extends Actor {
     gameOver(){
         this.berryCount = 0;
         this.updateBerryCounter()
+
+		for (let i = 0; i < this.snakeParts.length; i++) {
+			this.snakeParts[i].hide();
+		}
+
+		this.snakeParts = [];
+
+		this.hide()
+
         control.gameOver();
     }
 }
