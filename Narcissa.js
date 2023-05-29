@@ -136,6 +136,7 @@ class Snake extends Actor {
         this.berryCounterElement = document.getElementById("berryCounter");
 		
 		this.snakeParts = []
+		this.lastThreeBerries = [];
 		this.addInitialBodyParts()
 	}
 
@@ -216,8 +217,28 @@ class Snake extends Actor {
 		berry.hide()
 		this.updateBerryCounter()
 		
+		let aux = this.lastThreeBerries.length+1
+
+		console.log(this.lastThreeBerries.toString)
+		if(aux <= 3){
+			console.log("a")
+			this.snakeParts[aux-1].imageName = berry.imageName
+			this.lastThreeBerries.push(berry)
+		}
+		else{
+			console.log("b")
+			for(let i=2; i>0; i--){
+				this.snakeParts[i].imageName = this.snakeParts[i-1].imageName;
+			}
+			this.snakeParts[0].imageName = berry.imageName
+			this.snakeParts[3].imageName = IMAGE_NAME_SNAKE_BODY;
+			this.lastThreeBerries.pop()
+			this.lastThreeBerries.unshift(berry);
+		}
+		
+
 		let newBodyPart = new SnakeBody(this.lastBodyPart.x-1,this.lastBodyPart.y-1)
-		newBodyPart.imageName = berry.imageName
+		//newBodyPart.imageName = berry.imageName
 		this.lastBodyPart = newBodyPart;
 		this.snakeParts.push(newBodyPart)
 	}
