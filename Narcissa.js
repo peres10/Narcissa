@@ -58,10 +58,25 @@ class Actor {
 		this.draw(this.x, this.y, GameImages[IMAGE_NAME_EMPTY]);
 	}
 	move(dx, dy) {
-		this.hide();
-		this.x += dx;
-        this.y += dy;
+		let nextX = this.x + dx;
+        let nextY = this.y + dy;
 
+
+		if (nextX < 0) {
+			nextX = WORLD_WIDTH - 1; // Wrap to the right side
+		} else if (nextX >= WORLD_WIDTH) {
+			nextX = 0; // Wrap to the left side
+		}
+
+		if (nextY< 0) {
+			nextY = WORLD_HEIGHT - 1; // Wrap to the bottom
+		} else if (nextY >= WORLD_HEIGHT) {
+			nextY = 0; // Wrap to the top
+		}
+
+        this.hide()
+        this.x = nextX;
+        this.y = nextY;
 		this.show();
 	}
 	animation(x, y) {
@@ -102,6 +117,12 @@ class SnakeBody extends Actor {
 	constructor(x,y){
 		super(x,y, IMAGE_NAME_SNAKE_BODY);
 	}
+	move(newX,newY){
+		this.hide();
+		this.x = newX;
+		this.y = newY;
+		this.show()
+	}
 
 }
 
@@ -115,17 +136,20 @@ class Snake extends Actor {
         this.berryCounterElement = document.getElementById("berryCounter");
 		
 		this.snakeParts = []
-		this.snakeParts.push(new SnakeBody(x-1,y))
-		this.snakeParts.push(new SnakeBody(x-2,y))
-		this.snakeParts.push(new SnakeBody(x-3,y))
-		this.lastBodyPart = new SnakeBody(x-4,y)
-		this.snakeParts.push(this.lastBodyPart)
+		this.addInitialBodyParts()
 	}
 
-    addBodyPart(x,y){
+	addInitialBodyParts(){
+		this.snakeParts.push(new SnakeBody(this.x-1,this.y))
+		this.snakeParts.push(new SnakeBody(this.x-2,this.y))
+		this.snakeParts.push(new SnakeBody(this.x-3,this.y))
+		this.lastBodyPart = new SnakeBody(this.x-4,this.y)
+		this.snakeParts.push(this.lastBodyPart)
+	}
+    /*addBodyPart(x,y){
         const bodyPart = new Actor(x,y, IMAGE_NAME_SNAKE_BODY);
         this.body.push(bodyPart);
-    }
+    }*/
 	handleKey() {
 		let k = control.getKey();
         
@@ -148,33 +172,16 @@ class Snake extends Actor {
 			}
 		}
 	}
-    move(dx, dy) {
+	move(dx,dy){
+
 		let nextX = this.x + dx;
         let nextY = this.y + dy;
 
 
-		if (nextX < 0) {
-			nextX = WORLD_WIDTH - 1; // Wrap to the right side
-		} else if (nextX >= WORLD_WIDTH) {
-			nextX = 0; // Wrap to the left side
-		}
-
-		if (nextY< 0) {
-			nextY = WORLD_HEIGHT - 1; // Wrap to the bottom
-		} else if (nextY >= WORLD_HEIGHT) {
-			nextY = 0; // Wrap to the top
-		}
-
-        const actorAtNewPosition = control.world[nextX][nextY];
+		const actorAtNewPosition = control.world[nextX][nextY];
 
         if (actorAtNewPosition instanceof Berry){
-            this.berryCount++;
-            actorAtNewPosition.hide()
-            this.updateBerryCounter()
-			
-			let newBodyPart = new SnakeBody(this.lastBodyPart.x-1,this.lastBodyPart.y-1)
-			this.lastBodyPart = newBodyPart;
-			this.snakeParts.push(newBodyPart)
+			this.pickUpBerry(actorAtNewPosition)
         }
 
         if(actorAtNewPosition instanceof Shrub || actorAtNewPosition instanceof SnakeBody){
@@ -182,37 +189,37 @@ class Snake extends Actor {
             return;
         }
 
-		/*for (let i = 0; i < this.snakeParts.length; i++) {
-			if (nextX === this.snakeParts[i].x && nextY === this.snakeParts[i].y) {
-				this.gameOver();
-				return;
-			}
-		}*/
-
-        this.hide()
-
 		let prevX = this.x;
 		let prevY = this.y;
+
+		super.move(dx,dy)
+
 		if(!(this.movex == 0 && this.movey == 0))
-			for(let i = 0; i < this.snakeParts.length; i++){
-				
-				let auxX = this.snakeParts[i].x;
-				let auxY = this.snakeParts[i].y;
-				this.snakeParts[i].hide()
-				
-				this.snakeParts[i].x = prevX
-				this.snakeParts[i].y = prevY
-				//this.snakeParts[i].move(prevX,prevY)
+			this.moveBodyParts(prevX,prevY)
+	}
 
-				
-				this.snakeParts[i].show()
-				prevX = auxX;
-				prevY = auxY;
-			}
 
-        this.x = nextX;
-        this.y = nextY;
-		this.show();
+	moveBodyParts(prevX,prevY){
+		for(let i = 0; i < this.snakeParts.length; i++){
+				
+			let auxX = this.snakeParts[i].x;
+			let auxY = this.snakeParts[i].y;
+			this.snakeParts[i].move(prevX,prevY)
+
+			prevX = auxX;
+			prevY = auxY;
+		}
+	}
+	
+	pickUpBerry(berry){
+		this.berryCount++;
+		berry.hide()
+		this.updateBerryCounter()
+		
+		let newBodyPart = new SnakeBody(this.lastBodyPart.x-1,this.lastBodyPart.y-1)
+		newBodyPart.imageName = berry.imageName
+		this.lastBodyPart = newBodyPart;
+		this.snakeParts.push(newBodyPart)
 	}
 	animation(x, y) {
 		this.handleKey();
