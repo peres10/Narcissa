@@ -68,7 +68,7 @@ class Actor {
 			nextX = 0; // Wrap to the left side
 		}
 
-		if (nextY< 0) {
+		if (nextY < 0) {
 			nextY = WORLD_HEIGHT - 1; // Wrap to the bottom
 		} else if (nextY >= WORLD_HEIGHT) {
 			nextY = 0; // Wrap to the top
@@ -132,12 +132,12 @@ class Snake extends Actor {
 		this.startX = x;
 		this.startY = y;
 		[this.movex, this.movey] = [0,0];
-        this.berryCount = 0;
-        this.berryCounterElement = document.getElementById("berryCounter");
-		
+		this.snakeSize = document.getElementById("snakeSize");
+	
 		this.snakeParts = []
 		this.lastThreeBerries = [];
 		this.addInitialBodyParts()
+		this.updateSnakeSize()
 	}
 
 	addInitialBodyParts(){
@@ -151,6 +151,7 @@ class Snake extends Actor {
         const bodyPart = new Actor(x,y, IMAGE_NAME_SNAKE_BODY);
         this.body.push(bodyPart);
     }*/
+
 	handleKey() {
 		let k = control.getKey();
         
@@ -177,6 +178,18 @@ class Snake extends Actor {
 
 		let nextX = this.x + dx;
         let nextY = this.y + dy;
+
+		if (nextX < 0) {
+			nextX = WORLD_WIDTH - 1; // Wrap to the right side
+		} else if (nextX >= WORLD_WIDTH) {
+			nextX = 0; // Wrap to the left side
+		}
+
+		if (nextY < 0) {
+			nextY = WORLD_HEIGHT - 1; // Wrap to the bottom
+		} else if (nextY >= WORLD_HEIGHT) {
+			nextY = 0; // Wrap to the top
+		}
 
 
 		const actorAtNewPosition = control.world[nextX][nextY];
@@ -211,48 +224,77 @@ class Snake extends Actor {
 			prevY = auxY;
 		}
 	}
-	
+	checkWhenEat(berryColor){
+		let flag = false
+		for(let i = 0; i < this.lastThreeBerries.length;i++){
+			if(this.lastThreeBerries[i].imageName == berryColor){
+				flag = true;
+				break;
+			}
+		}
+		if(flag){
+			if(this.snakeParts.length == 4){
+			} 
+			else if(Math.floor((this.snakeParts.length+1)/2 <= 5)){
+				console.log("aaa")
+				while(this.snakeParts.length>4){
+					let snakePart = this.snakeParts.pop();
+					snakePart.hide()
+				}
+				console.log(this.snakeParts.length)
+			}
+			else{
+				let i = Math.floor((this.snakeParts.length+1)/2);	
+				for(i; i>=0; i--){
+					let snakePart = this.snakeParts.pop();
+					snakePart.hide()
+				}	
+			}	
+		}
+		return flag
+	}
 	pickUpBerry(berry){
-		this.berryCount++;
 		berry.hide()
-		this.updateBerryCounter()
 		
+		let flag = this.checkWhenEat(berry.imageName);
 		let aux = this.lastThreeBerries.length+1
 
-		console.log(this.lastThreeBerries.toString)
-		if(aux <= 3){
-			console.log("a")
-			this.snakeParts[aux-1].imageName = berry.imageName
-			this.lastThreeBerries.push(berry)
-		}
-		else{
-			console.log("b")
-			for(let i=2; i>0; i--){
-				this.snakeParts[i].imageName = this.snakeParts[i-1].imageName;
-			}
-			this.snakeParts[0].imageName = berry.imageName
-			this.snakeParts[3].imageName = IMAGE_NAME_SNAKE_BODY;
-			this.lastThreeBerries.pop()
-			this.lastThreeBerries.unshift(berry);
-		}
-		
 
-		let newBodyPart = new SnakeBody(this.lastBodyPart.x-1,this.lastBodyPart.y-1)
-		//newBodyPart.imageName = berry.imageName
-		this.lastBodyPart = newBodyPart;
-		this.snakeParts.push(newBodyPart)
+		console.log(this.lastThreeBerries.toString)
+		if(!flag){
+			if(aux <= 3){
+				console.log("a")
+				this.snakeParts[aux-1].imageName = berry.imageName
+				this.lastThreeBerries.push(berry)
+			}
+			else{
+				console.log("b")
+				for(let i=2; i>0; i--){
+					this.snakeParts[i].imageName = this.snakeParts[i-1].imageName;
+				}
+				this.snakeParts[0].imageName = berry.imageName
+				this.snakeParts[3].imageName = IMAGE_NAME_SNAKE_BODY;
+				this.lastThreeBerries.pop()
+				this.lastThreeBerries.unshift(berry);
+
+			}
+			
+
+			let newBodyPart = new SnakeBody(this.lastBodyPart.x-1,this.lastBodyPart.y-1)
+			//newBodyPart.imageName = berry.imageName
+			this.lastBodyPart = newBodyPart;
+			this.snakeParts.push(newBodyPart)
+		}
+		this.updateSnakeSize();
 	}
 	animation(x, y) {
 		this.handleKey();
 		this.move(this.movex, this.movey);
 	}
-    updateBerryCounter(){
-        this.berryCounterElement.textContent = this.berryCount;
-    }
+	updateSnakeSize(){
+		this.snakeSize.textContent = this.snakeParts.length + 1
+	}
     gameOver(){
-        this.berryCount = 0;
-        this.updateBerryCounter()
-
 		for (let i = 0; i < this.snakeParts.length; i++) {
 			this.snakeParts[i].hide();
 		}
