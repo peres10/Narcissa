@@ -27,7 +27,7 @@ const IMAGE_NAME_SHRUB = "shrub";
 const IMAGE_NAME_BERRY_BLUE = "berryBlue";
 const IMAGE_NAME_SNAKE_HEAD = "snakeHead";
 const IMAGE_NAME_SNAKE_BODY = "snakeBody";
-
+const AROUND_POSITIONS = [ [0,1], [1,1] , [1,0], [1,-1], [0,-1], [-1,-1], [-1,0], [-1,1]]
 
 
 // GLOBAL VARIABLES
@@ -86,11 +86,82 @@ class Actor {
 		|| control.world[this.x][this.y] === undefined)
 			fatalError("Invalid position");
 	}
+	checkIfFreePosition(positionX,positionY){
+		if(positionX < 0 || positionX >= WORLD_WIDTH || positionY < 0 || positionY >= WORLD_HEIGHT)
+			return false
+		if(control.world[positionX][positionY] == control.getEmpty())
+			return true
+		else
+			return false
+
+	}
 }
 
 
 class Shrub extends Actor {
-	constructor(x, y, color) { super(x, y, IMAGE_NAME_SHRUB); }
+	constructor(x, y) { 
+		super(x, y, IMAGE_NAME_SHRUB);
+		this.lastGrowTick = control.getTime() 
+		this.nextGrowTick = this.getNextGrowTime();
+		//this.nextGrowTick = this.lastGrowTick + 10;
+	}
+	getNextGrowTime(){
+		let minInterval = 1; 
+		let maxInterval = 10;
+		let i=0
+		while(i<minInterval){
+			i = rand(maxInterval-minInterval)
+		}
+		return timeToTicks(this.lastGrowTick + minInterval + i);
+	}
+	getGrowPosition(){
+		let auxDirections = AROUND_POSITIONS.slice(0,AROUND_POSITIONS.length-1);;
+		let positionNum = rand(auxDirections.length);
+		let found = false;
+
+		console.log(auxDirections.length)
+		let positionX = this.x + auxDirections[positionNum][0];
+		let positionY = this.y + auxDirections[positionNum][1];
+		if(this.checkIfFreePosition(positionX,positionY))
+			found = true
+
+
+		while(auxDirections.length > 0 || !found ){
+			auxDirections.splice(positionNum,1);
+			console.log(auxDirections.length)
+			positionNum = rand(auxDirections.length);
+
+			console.log(positionX + " " + positionY)
+			if(auxDirections.length == 0){
+				break;
+			}
+			positionX = this.x + auxDirections[positionNum][0];
+			positionY = this.y + auxDirections[positionNum][1];
+			if (this.checkIfFreePosition(positionX,positionY)){
+				found = true;
+				break;
+			}
+		}
+		if(found == true)
+			return [positionX,positionY];
+		else 
+			return null;
+	}
+	grow(){
+		//console.log(control.getTime() + " " + this.nextGrowTick)
+		
+		if(control.getTime() == this.nextGrowTick){
+			let positions = this.getGrowPosition();
+			if (positions === null)
+				return 
+
+			new Shrub(positions[0],positions[1]);
+
+			this.lastGrowTick = control.getTime();
+			//this.nextGrowTick = this.getNextGrowTime();
+			this.nextGrowTick = this.lastGrowTick + 3;
+		}
+	}
 }
 
 class Empty extends Actor {
@@ -134,18 +205,42 @@ class Snake extends Actor {
 		[this.movex, this.movey] = [0,0];
 		this.snakeSize = document.getElementById("snakeSize");
 	
+		this.firstMove = true;
 		this.snakeParts = []
 		this.lastThreeBerries = [];
-		this.addInitialBodyParts()
+		//this.addInitialBodyParts()
 		this.updateSnakeSize()
 	}
 
-	addInitialBodyParts(){
-		this.snakeParts.push(new SnakeBody(this.x-1,this.y))
-		this.snakeParts.push(new SnakeBody(this.x-2,this.y))
-		this.snakeParts.push(new SnakeBody(this.x-3,this.y))
-		this.lastBodyPart = new SnakeBody(this.x-4,this.y)
-		this.snakeParts.push(this.lastBodyPart)
+	addInitialBodyParts(dx,dy){
+		if(dx == 1){
+			this.snakeParts.push(new SnakeBody(this.x-1,this.y))
+			this.snakeParts.push(new SnakeBody(this.x-2,this.y))
+			this.snakeParts.push(new SnakeBody(this.x-3,this.y))
+			this.lastBodyPart = new SnakeBody(this.x-4,this.y)
+			this.snakeParts.push(this.lastBodyPart)
+		}
+		else if(dx == -1){
+			this.snakeParts.push(new SnakeBody(this.x+1,this.y))
+			this.snakeParts.push(new SnakeBody(this.x+2,this.y))
+			this.snakeParts.push(new SnakeBody(this.x+3,this.y))
+			this.lastBodyPart = new SnakeBody(this.x+4,this.y)
+			this.snakeParts.push(this.lastBodyPart)
+		}
+		else if(dy == -1){
+			this.snakeParts.push(new SnakeBody(this.x,this.y+1))
+			this.snakeParts.push(new SnakeBody(this.x,this.y+2))
+			this.snakeParts.push(new SnakeBody(this.x,this.y+3))
+			this.lastBodyPart = new SnakeBody(this.x,this.y+4)
+			this.snakeParts.push(this.lastBodyPart)
+		}
+		else if(dy == 1){
+			this.snakeParts.push(new SnakeBody(this.x,this.y-1))
+			this.snakeParts.push(new SnakeBody(this.x,this.y-2))
+			this.snakeParts.push(new SnakeBody(this.x,this.y-3))
+			this.lastBodyPart = new SnakeBody(this.x,this.y-4)
+			this.snakeParts.push(this.lastBodyPart)
+		}
 	}
     /*addBodyPart(x,y){
         const bodyPart = new Actor(x,y, IMAGE_NAME_SNAKE_BODY);
@@ -175,6 +270,10 @@ class Snake extends Actor {
 		}
 	}
 	move(dx,dy){
+		if(this.firstMove){
+			this.addInitialBodyParts(dx,dy)
+			this.firstMove = false
+		}
 
 		let nextX = this.x + dx;
         let nextY = this.y + dy;
@@ -233,19 +332,18 @@ class Snake extends Actor {
 			}
 		}
 		if(flag){
-			if(this.snakeParts.length == 4){
+			if(this.snakeParts.length <= 4){
 			} 
 			else if(Math.floor((this.snakeParts.length+1)/2 <= 5)){
-				console.log("aaa")
 				while(this.snakeParts.length>4){
 					let snakePart = this.snakeParts.pop();
 					snakePart.hide()
 				}
-				console.log(this.snakeParts.length)
+				//console.log(this.snakeParts.length)
 			}
 			else{
 				let i = Math.floor((this.snakeParts.length+1)/2);	
-				for(i; i>=0; i--){
+				for(i; i>0; i--){
 					let snakePart = this.snakeParts.pop();
 					snakePart.hide()
 				}	
@@ -260,31 +358,44 @@ class Snake extends Actor {
 		let aux = this.lastThreeBerries.length+1
 
 
-		console.log(this.lastThreeBerries.toString)
-		if(!flag){
-			if(aux <= 3){
-				console.log("a")
-				this.snakeParts[aux-1].imageName = berry.imageName
-				this.lastThreeBerries.push(berry)
+		//console.log(this.lastThreeBerries.toString)
+		if(aux <= 3){
+			//console.log("a")
+			//this.snakeParts[aux-1].imageName = berry.imageName
+			this.lastThreeBerries.unshift(berry)
+			for(let i=0; i< this.lastThreeBerries.length;i++){
+				//console.log(this.lastThreeBerries[i].imageName)
 			}
-			else{
-				console.log("b")
-				for(let i=2; i>0; i--){
-					this.snakeParts[i].imageName = this.snakeParts[i-1].imageName;
-				}
-				this.snakeParts[0].imageName = berry.imageName
-				this.snakeParts[3].imageName = IMAGE_NAME_SNAKE_BODY;
-				this.lastThreeBerries.pop()
-				this.lastThreeBerries.unshift(berry);
+			/*let aux2 = this.snakeParts[0].imageName;
+			this.snakeParts[0].imageName = berry.imageName;
+			for(let i=1; i<aux; i++){
+				this.snakeParts[i].imageName = aux2;
+				aux2 = this.snakeParts[i].imageName;
+			}*/
+		}
+		else{
+			//console.log("b")
+			/*for(let i=2; i>0; i--){
+				this.snakeParts[i].imageName = this.snakeParts[i-1].imageName;
+			}
+			this.snakeParts[0].imageName = berry.imageName
+			this.snakeParts[3].imageName = IMAGE_NAME_SNAKE_BODY;*/
+			this.lastThreeBerries.pop()
+			this.lastThreeBerries.unshift(berry);
 
-			}
+		}
 			
+		this.snakeParts[this.lastThreeBerries.length].imageName = IMAGE_NAME_SNAKE_BODY;
+		for(let i=0; i<this.lastThreeBerries.length;i++){
+			this.snakeParts[i].imageName = this.lastThreeBerries[i].imageName;
+		}
 
+		if(!flag){
 			let newBodyPart = new SnakeBody(this.lastBodyPart.x-1,this.lastBodyPart.y-1)
 			//newBodyPart.imageName = berry.imageName
 			this.lastBodyPart = newBodyPart;
 			this.snakeParts.push(newBodyPart)
-		}
+		} 
 		this.updateSnakeSize();
 	}
 	animation(x, y) {
@@ -300,6 +411,8 @@ class Snake extends Actor {
 		}
 
 		this.snakeParts = [];
+
+		this.firstMove = true
 
 		this.hide()
 
@@ -371,13 +484,16 @@ class GameControl {
             return;
         }
 		this.time++;
-        this.timeDisplay.textContent = "Time: " + this.time;
+        this.timeDisplay.textContent = "Time: " + ticksToTime(this.time);
 		for(let x=0 ; x < WORLD_WIDTH ; x++)
 			for(let y=0 ; y < WORLD_HEIGHT ; y++) {
 				let a = this.world[x][y];
 				if( a.atime < this.time ) {
 					a.atime = this.time;
 					a.animation(x, y);
+				}
+				if(a instanceof Shrub){
+					a.grow()
 				}
 			}
 	}
@@ -395,11 +511,22 @@ class GameControl {
     }
     gameOver(){
         alert("Game over!")
+
+		//this.world = this.createWorld()
 		this.loadLevel(1);
         this.time = 0
     }
+	getTime(){
+		return this.time;
+	}
 }
 
+function ticksToTime(ticks){
+	return ticks/4;
+}
+function timeToTicks(time){
+	return time*4;
+}
 
 // Functions called from the HTML page
 
