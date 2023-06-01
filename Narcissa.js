@@ -24,10 +24,20 @@ const ANIMATION_EVENTS_PER_SECOND = 4;
 const IMAGE_NAME_EMPTY = "empty";
 const IMAGE_NAME_INVALID = "invalid";
 const IMAGE_NAME_SHRUB = "shrub";
-const IMAGE_NAME_BERRY_BLUE = "berryBlue";
 const IMAGE_NAME_SNAKE_HEAD = "snakeHead";
 const IMAGE_NAME_SNAKE_BODY = "snakeBody";
 const AROUND_POSITIONS = [ [0,1], [1,1] , [1,0], [1,-1], [0,-1], [-1,-1], [-1,0], [-1,1]]
+
+const IMAGE_NAME_BERRY_BLUE = "berryBlue";
+const IMAGE_NAME_BERRY_GREEN = "berryGreen";
+const IMAGE_NAME_BERRY_ORANGE = "berryOrange";
+const IMAGE_NAME_BERRY_RED = "berryRed";
+const IMAGE_NAME_BERRY_PURPLE = "berryPurple";
+const IMAGE_NAME_BERRY_CYAN = "berryCyan";
+
+const BERRY_COLORS = [ IMAGE_NAME_BERRY_BLUE, IMAGE_NAME_BERRY_GREEN, IMAGE_NAME_BERRY_ORANGE,
+	 IMAGE_NAME_BERRY_RED, IMAGE_NAME_BERRY_PURPLE,IMAGE_NAME_BERRY_CYAN]
+
 
 
 // GLOBAL VARIABLES
@@ -106,20 +116,22 @@ class Shrub extends Actor {
 		//this.nextGrowTick = this.lastGrowTick + 10;
 	}
 	getNextGrowTime(){
-		let minInterval = 1; 
-		let maxInterval = 10;
+		let minInterval = 20; 
+		let maxInterval = 60;
 		let i=0
 		while(i<minInterval){
 			i = rand(maxInterval-minInterval)
 		}
-		return timeToTicks(this.lastGrowTick + minInterval + i);
+		let growTick = timeToTicks( ticksToTime(this.lastGrowTick) + minInterval + i)
+		//console.log(this.lastGrowTick + " " + growTick)
+		return growTick;
 	}
 	getGrowPosition(){
-		let auxDirections = AROUND_POSITIONS.slice(0,AROUND_POSITIONS.length-1);;
+		let auxDirections = AROUND_POSITIONS.slice(0,AROUND_POSITIONS.length);;
 		let positionNum = rand(auxDirections.length);
 		let found = false;
 
-		console.log(auxDirections.length)
+		//console.log(positionNum)
 		let positionX = this.x + auxDirections[positionNum][0];
 		let positionY = this.y + auxDirections[positionNum][1];
 		if(this.checkIfFreePosition(positionX,positionY))
@@ -128,10 +140,10 @@ class Shrub extends Actor {
 
 		while(auxDirections.length > 0 || !found ){
 			auxDirections.splice(positionNum,1);
-			console.log(auxDirections.length)
+			//console.log(auxDirections.length)
 			positionNum = rand(auxDirections.length);
 
-			console.log(positionX + " " + positionY)
+			//console.log(positionX + " " + positionY)
 			if(auxDirections.length == 0){
 				break;
 			}
@@ -159,7 +171,7 @@ class Shrub extends Actor {
 
 			this.lastGrowTick = control.getTime();
 			//this.nextGrowTick = this.getNextGrowTime();
-			this.nextGrowTick = this.lastGrowTick + 3;
+			this.nextGrowTick = this.getNextGrowTime();
 		}
 	}
 }
@@ -270,7 +282,7 @@ class Snake extends Actor {
 		}
 	}
 	move(dx,dy){
-		if(this.firstMove){
+		if(this.firstMove && !(this.movex == 0 && this.movey == 0)){
 			this.addInitialBodyParts(dx,dy)
 			this.firstMove = false
 		}
@@ -411,6 +423,7 @@ class Snake extends Actor {
 		}
 
 		this.snakeParts = [];
+		this.lastThreeBerries = [];
 
 		this.firstMove = true
 
@@ -437,6 +450,11 @@ class GameControl {
 		this.setupEvents();
         this.isPaused = true;
         this.timeDisplay = document.getElementById("timeDisplay");
+		
+		this.lastBerrySpawn = 0;
+		this.nextBerrySpawn = this.getNextBerrySpawn();
+		this.newBerryLocations = []
+		this.berrySpawnPoints()
 	}
 	getEmpty() {
 		return this.empty;
@@ -485,6 +503,7 @@ class GameControl {
         }
 		this.time++;
         this.timeDisplay.textContent = "Time: " + ticksToTime(this.time);
+		let counter =0
 		for(let x=0 ; x < WORLD_WIDTH ; x++)
 			for(let y=0 ; y < WORLD_HEIGHT ; y++) {
 				let a = this.world[x][y];
@@ -494,8 +513,13 @@ class GameControl {
 				}
 				if(a instanceof Shrub){
 					a.grow()
+					counter++
 				}
+				if(this.timeToSpawnBerries())
+					this.addBerryToMap(x,y)
 			}
+		this.prepareNextBerries()
+		//console.log(counter)
 	}
 	keyDownEvent(e) {
         this.isPaused = false
@@ -513,11 +537,85 @@ class GameControl {
         alert("Game over!")
 
 		//this.world = this.createWorld()
+		for(let x=0 ; x < WORLD_WIDTH ; x++){
+			for(let y=0 ; y < WORLD_HEIGHT ; y++) {
+				let a = this.world[x][y];
+				a.hide()
+			}
+		}
 		this.loadLevel(1);
         this.time = 0
     }
 	getTime(){
 		return this.time;
+	}
+
+	createNewBerry(x,y){
+		let colorNum = rand(BERRY_COLORS.length)
+		let color = BERRY_COLORS[colorNum];
+		console.log(color)
+		return new Berry(x,y,color)
+	}
+
+	addBerryToMap(x,y){
+		let berryPos = [x,y]
+		//console.log("ddd")
+		//console.log(berryPos)
+		//console.log(this.newBerryLocations)
+		for(let i = 0 ; i < this.newBerryLocations.length ; i++){
+			//console.log(this.newBerryLocations[i] + " "+ berryPos)
+			if( this.newBerryLocations[i][0] == x && this.newBerryLocations[i][1] == y && this.world[x][y] == this.getEmpty()){
+				//console.log("bbb")
+				this.createNewBerry(x,y)
+				return
+			}
+		}
+
+
+		/*/for(let i; this.newBerryLocations.length; i++){
+			let posX = this.newBerryLocations[i][0]
+			let posY = this.newBerryLocations[i][1]
+			if( posX == x &&  posY == y && this.world[posX][posY] == this.getEmpty()){
+				console.log("bbb")
+				this.createNewBerry(newX,newY)
+			}
+		}*/
+	}
+	getNextBerrySpawn(){
+		let minInterval = 1; 
+		let maxInterval = 11;
+		let i=0
+		while(i<minInterval){
+			i = rand(maxInterval-minInterval)
+		}
+		let growTick = timeToTicks( ticksToTime(this.lastBerrySpawn) + minInterval + i)
+		//console.log(this.lastBerrySpawn + " " + growTick)
+		return growTick;
+	}
+	berrySpawnPoints(){
+		let numBerries = rand(5) + 1;
+		this.newBerryLocations = [];
+		for(let i = 0; i < numBerries; i++){
+			let posX = rand(WORLD_WIDTH);
+			let posY = rand(WORLD_HEIGHT);
+			while( this.world[posX][posY] != this.empty ){
+				posX = rand(WORLD_WIDTH);
+				posY = rand(WORLD_HEIGHT);
+			}
+			this.newBerryLocations.push([posX,posY])
+			
+		}
+	}
+	timeToSpawnBerries(){
+		//console.log(this.nextBerrySpawn + " " + this.time)
+		return this.nextBerrySpawn == this.time;
+	}
+	prepareNextBerries(){
+		if(this.timeToSpawnBerries()){
+			this.lastBerrySpawn = this.nextBerrySpawn;
+			this.nextBerrySpawn = this.getNextBerrySpawn()
+			this.berrySpawnPoints()
+		}
 	}
 }
 
